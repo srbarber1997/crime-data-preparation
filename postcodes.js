@@ -17,6 +17,39 @@ if (!outputFile) {
 const startTime = moment().valueOf();
 console.log("Reading input from: " + file);
 
+const poscodes = {};
+const calls = 0;
+const callsCompleted;
+const errors = [];
+
+function receivePostcode(long, lat, postcode) {
+  poscodes[long + ":" + lat] = postcode.result[0].outcode;
+  calls--;
+  callsCompleted++;
+  updateCalls(false);
+}
+
+function requestPostcode(long, lat) {
+  calls++;
+  fetch(`https://api.postcodes.io/postcodes?lon=${long}&lat=${lat}`)
+    .then(res => res.json())
+    .then(postcode => receivePostcode(long, lat, postcode))
+    .catch(e => {
+      errors.push(e);
+      calls--;
+      updateCalls(false);
+    });
+  updateCalls(true);
+}
+
+function updateCalls(up) {
+  process.stdout.clearLine();
+  process.stdout.clearLine();
+  process.stdout.cursorTo(0);
+  process.stdout.write(`Completed calls: ${callsCompleted}\n`);
+  process.stdout.write(`Ongoing calls: ${calls} ${up ? '+' : '-'}`);
+}
+
 fs.readFile(file, "utf8", function(e, input) {
   if (e) {
     console.error(e);
@@ -44,53 +77,29 @@ fs.readFile(file, "utf8", function(e, input) {
   parser.on("end", function() {
     process.stdout.write("Fetching Postcodes...\n");
     const header = output[0];
-    const body = output.slice(1);
-    output = undefined;
-    postcodes = {};
-    callsToComplete = 0;
-    body
-      .map(row => {
+    const body = output.slice(1);  
+    body.map(row => {
         const obj = {};
         row.forEach(function(cell, index) {
           obj[header[index]] = cell;
         });
         return obj;
       })
-      .forEach((row, index) => {
+      .forEach((row) => {
         const longitude = row["Longitude"];
         const latitude = row["Latitude"];
         if (longitude && latitude) {
-          callsToComplete++;
-          if (index > 0) {
-            process.stdout.clearLine();
-            process.stdout.cursorTo(0);
-            process.stdout.write("Calls To Complete: " + callsToComplete);
-          }
-          fetch(
-            "https://api.postcodes.io/postcodes?lon=" +
-              longitude +
-              "&lat=" +
-              latitude
-          )
-            .then(res => {
-              callsToComplete--;
-              return res.json();
-            })
-            .then(postcode => {
-              poscodes[longitude + ":" + latitude] = postcode.result[0].outcode;
-            })
-            .catch(e => {
-              callsToComplete--;
-            });
+          while (calls > 9) { }
+          requestPostcode(longitude, latitude);
         }
       });
-    while (callsToComplete > 0) {
-      process.stdout.clearLine();
-      process.stdout.cursorTo(0);
-      process.stdout.write("Calls To Complete: " + callsToComplete);
-    }
+    while (calls > 0) { }
+    process.stdout.write('\n');
+    process.stdout.write(`Completed with {${erros.length} errors:\n`);
+    process.stdout.write(errors);
+
     outputData = JSON.stringify(postcodes);
-    process.stdout.write("Writing to: " + outputFile + "\n");
+    process.stdout.write("\nWriting to: " + outputFile + "\n");
     fs.writeFile(outputFile, outputData, {}, function(e) {
       if (e) {
         console.error(e);
