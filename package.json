@@ -5,7 +5,7 @@
   "main": "convert.js",
   "scripts": {
     "start": "node --max-old-space-size=5024 convert.js stopandsearch.csv output.csv",
-    "postcodes": "node --max-old-space-size=5024 postcodes.js stopandsearch.csv postcodes.json"
+    "postcodes": "node --inspect --max-old-space-size=5024 postcodes.js stopandsearch.csv postcodes.json"
   },
   "author": "",
   "license": "ISC",

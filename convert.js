@@ -27,7 +27,7 @@ function converter(row) {
 
   const longitude = row["Longitude"];
   const latitude = row["Latitude"];
-  const postcode;
+  const postcode = {};
 
   // Get the date field as a moment date
   const date = moment(row["Date"]);

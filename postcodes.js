@@ -17,13 +17,27 @@ if (!outputFile) {
 const startTime = moment().valueOf();
 console.log("Reading input from: " + file);
 
-const poscodes = {};
+const postcodes = {};
 let calls = 0;
 let callsCompleted = 0;
 const errors = [];
 
+function updateCalls() {
+  process.stdout.clearLine();
+  process.stdout.cursorTo(0);
+  process.stdout.write(`Completed calls: ${callsCompleted}, `);
+  process.stdout.write(`Ongoing calls: ${calls}, `);
+  process.stdout.write(`Errors: ${errors.length}`);
+}
+
 function receivePostcode(long, lat, postcode) {
-  poscodes[long + ":" + lat] = postcode.result[0].outcode;
+  // The postcode object from the postcodes.io url has an array of
+  // postcodes. The first in the array is the smallest distance from
+  // the longitude and latitude
+  if (postcode.result === null) {
+    return;
+  }
+  postcodes[long + ":" + lat] = postcode.result[0].outcode;
   calls--; callsCompleted++;
   updateCalls();
 }
@@ -31,8 +45,7 @@ function receivePostcode(long, lat, postcode) {
 function requestPostcode(long, lat) {
   const URL = `https://api.postcodes.io/postcodes?lon=${long}&lat=${lat}`;
   let completed = false;
-  calls++;
-  fetch(URL)
+  calls++; fetch(URL)
     .then(res => {
       if (res.ok) {
         completed = true; 
@@ -40,7 +53,9 @@ function requestPostcode(long, lat) {
       }
       throw new Error('Non OK response: ' + res.status);
     })
-    .then(postcode => receivePostcode(long, lat, postcode))
+    .then(postcode => {
+      receivePostcode(long, lat, postcode)
+    })
     .catch(e => {
       errors.push(e);
       calls--;
@@ -48,19 +63,12 @@ function requestPostcode(long, lat) {
     });
   setTimeout(() => {
     if (!completed) {
-      erros.push(`Timed out: ${URL}`);
+      errors.push(`Timed out: ${URL}`);
       calls--;
       updateCalls();
     }
-  }, 500);
+  }, 5000);
   updateCalls();
-}
-
-function updateCalls() {
-  process.stdout.clearLine();
-  process.stdout.cursorTo(0);
-  process.stdout.write(`Completed calls: ${callsCompleted}, `);
-  process.stdout.write(`Ongoing calls: ${calls}`);
 }
 
 fs.readFile(file, "utf8", function(e, input) {
@@ -87,10 +95,11 @@ fs.readFile(file, "utf8", function(e, input) {
     console.error(err.message);
   });
 
+  const fetchInterval = [];
   parser.on("end", function() {
     process.stdout.write("Fetching Postcodes...\n");
     const header = output[0];
-    const body = output.slice(1).slice(0, 10); // Second .slice() to limit the sample to 10 rows for testing
+    const body = output.slice(1).splice(0, 2000);
     body.map(row => {
         const obj = {};
         row.forEach(function(cell, index) {
@@ -103,25 +112,34 @@ fs.readFile(file, "utf8", function(e, input) {
         const longitude = row["Longitude"];
         const latitude = row["Latitude"];
 
-        while (calls > 9) { }
-        requestPostcode(longitude, latitude);
+        fetchInterval[longitude + ":" + latitude] = setInterval(() => {
+          if (calls < 50) {
+            requestPostcode(longitude, latitude);
+            clearInterval(fetchInterval[longitude + ":" + latitude]);
+          }
+        }, 100);
       });
-    while (calls > 0) { }
-    process.stdout.write('\n');
-    process.stdout.write(`Completed with {${erros.length} errors:\n`);
-    process.stdout.write(errors);
-
-    outputData = JSON.stringify(postcodes);
-    process.stdout.write("\nWriting to: " + outputFile + "\n");
-    fs.writeFile(outputFile, outputData, {}, function(e) {
-      if (e) {
-        console.error(e);
-      } else {
-        process.stdout.write("Output writen to: " + outputFile);
-        process.stdout.write(
-          "Completed in " + (moment().valueOf() - startTime) + "ms"
-        );
+    const finishInteval = setInterval(() => {
+      if (calls > 0) {
+        return;
       }
-    });
+      process.stdout.write('\n');
+      process.stdout.write(`Completed with ${errors.length} errors${errors.length === 0 ? ':' : ''}`);
+      errors.forEach(error => process.stdout.write(`\n - ${error}`));
+
+      outputData = JSON.stringify(postcodes);
+      process.stdout.write("\nWriting to: " + outputFile + "\n");
+      fs.writeFile(outputFile, outputData, function(e) {
+        if (e) {
+          console.error(e);
+        } else {
+          process.stdout.write("Output writen to: " + outputFile);
+          process.stdout.write(
+            "Completed in " + (moment().valueOf() - startTime) + "ms"
+          );
+        }
+      });
+      clearInterval(finishInteval);
+    }, 5000);
   });
 });
