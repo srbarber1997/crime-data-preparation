@@ -35,10 +35,11 @@ function receivePostcode(long, lat, postcode) {
   // postcodes. The first in the array is the smallest distance from
   // the longitude and latitude
   if (postcode.result === null) {
+    postcodes[long + ":" + lat] = null;
     return;
   }
   postcodes[long + ":" + lat] = postcode.result[0].outcode;
-  if (callsCompleted % 1000 === 0) {
+  if (callsCompleted % 1000 === 100) {
     fs.writeFileSync(outputFile, JSON.stringify(postcodes, null, 2));
   }
   calls--; callsCompleted++;
@@ -98,23 +99,21 @@ fs.readFile(file, "utf8", function(e, input) {
     console.error(err.message);
   });
 
-  const fetchInterval = [];
+  const fetchInterval = {};
   parser.on("end", function() {
     process.stdout.write("Fetching Postcodes...\n");
     const header = output[0];
-    const body = output.slice(1).splice(0, 2000)
-        .map(row => {
-          const obj = {};
-          row.forEach(function(cell, index) {
-            obj[header[index]] = cell;
-          });
-          return obj;
-        })
-        .filter(row => row["Longitude"] && row["Latitude"])
-        .filter(row => !Object.keys(postcodes).includes(`${row["Longitude"]}:${row["Latitude"]}`));
-
-    _.chunk(body, Math.ceil(body.length / 1000)).forEach(rows => {
-      rows.forEach((row) => {
+    const body = output.slice(1).splice(0, 2000);
+    body.map(row => {
+        const obj = {};
+        row.forEach(function(cell, index) {
+          obj[header[index]] = cell;
+        });
+        return obj;
+      })
+      .filter(row => row["Longitude"] && row["Latitude"])
+      .filter(row => !Object.keys(postcodes).includes(`${row["Longitude"]}:${row["Latitude"]}`))
+      .forEach((row) => {
         const longitude = row["Longitude"];
         const latitude = row["Latitude"];
 
@@ -125,7 +124,6 @@ fs.readFile(file, "utf8", function(e, input) {
           }
         }, 100);
       });
-    });
     const finishInteval = setInterval(() => {
       if (calls > 0) {
         return;

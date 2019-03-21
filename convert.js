@@ -27,7 +27,8 @@ function converter(row) {
 
   const longitude = row["Longitude"];
   const latitude = row["Latitude"];
-  const postcode = {};
+  const postcodes = fs.existsSync('postcodes.json') ? JSON.parse(fs.readFileSync('postcodes.json')) : {};
+  row['Postcode'] = postcodes[`${longitude}:${latitude}`];
 
   // Get the date field as a moment date
   const date = moment(row["Date"]);
