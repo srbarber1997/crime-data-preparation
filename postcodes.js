@@ -17,7 +17,7 @@ if (!outputFile) {
 const startTime = moment().valueOf();
 console.log("Reading input from: " + file);
 
-const postcodes = {};
+const postcodes = fs.existsSync(outputFile) ? JSON.parse(fs.readFileSync(outputFile)) : {};
 let calls = 0;
 let callsCompleted = 0;
 const errors = [];
@@ -38,6 +38,9 @@ function receivePostcode(long, lat, postcode) {
     return;
   }
   postcodes[long + ":" + lat] = postcode.result[0].outcode;
+  if (callsCompleted % 1000 === 0) {
+    fs.writeFileSync(outputFile, JSON.stringify(postcodes, null, 2));
+  }
   calls--; callsCompleted++;
   updateCalls();
 }
@@ -99,16 +102,19 @@ fs.readFile(file, "utf8", function(e, input) {
   parser.on("end", function() {
     process.stdout.write("Fetching Postcodes...\n");
     const header = output[0];
-    const body = output.slice(1).splice(0, 2000);
-    body.map(row => {
-        const obj = {};
-        row.forEach(function(cell, index) {
-          obj[header[index]] = cell;
-        });
-        return obj;
-      })
-      .filter(row => row["Longitude"] && row["Latitude"])
-      .forEach((row) => {
+    const body = output.slice(1).splice(0, 2000)
+        .map(row => {
+          const obj = {};
+          row.forEach(function(cell, index) {
+            obj[header[index]] = cell;
+          });
+          return obj;
+        })
+        .filter(row => row["Longitude"] && row["Latitude"])
+        .filter(row => !Object.keys(postcodes).includes(`${row["Longitude"]}:${row["Latitude"]}`));
+
+    _.chunk(body, Math.ceil(body.length / 1000)).forEach(rows => {
+      rows.forEach((row) => {
         const longitude = row["Longitude"];
         const latitude = row["Latitude"];
 
@@ -119,17 +125,18 @@ fs.readFile(file, "utf8", function(e, input) {
           }
         }, 100);
       });
+    });
     const finishInteval = setInterval(() => {
       if (calls > 0) {
         return;
       }
+
       process.stdout.write('\n');
       process.stdout.write(`Completed with ${errors.length} errors${errors.length === 0 ? ':' : ''}`);
       errors.forEach(error => process.stdout.write(`\n - ${error}`));
-
-      outputData = JSON.stringify(postcodes);
+      
       process.stdout.write("\nWriting to: " + outputFile + "\n");
-      fs.writeFile(outputFile, outputData, function(e) {
+      fs.writeFile(outputFile, JSON.stringify(postcodes, null, 2), function(e) {
         if (e) {
           console.error(e);
         } else {

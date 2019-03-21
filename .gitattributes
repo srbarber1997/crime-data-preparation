@@ -1,1 +1,2 @@
 stopandsearch.csv filter=lfs diff=lfs merge=lfs -text
+postcodes.json filter=lfs diff=lfs merge=lfs -text
