@@ -16,6 +16,7 @@ if (!outputFile) {
 }
 const startTime = moment().valueOf();
 console.log("Reading input from: " + file);
+const postcodes = fs.existsSync('postcodes.json') ? JSON.parse(fs.readFileSync('postcodes.json')) : {};
 
 // Converter function to be called later (per row of the data)
 function converter(row) {
@@ -24,11 +25,6 @@ function converter(row) {
   //    columnName: cellData,
   //    ...
   // }
-
-  const longitude = row["Longitude"];
-  const latitude = row["Latitude"];
-  const postcodes = fs.existsSync('postcodes.json') ? JSON.parse(fs.readFileSync('postcodes.json')) : {};
-  row['Postcode'] = postcodes[`${longitude}:${latitude}`];
 
   // Get the date field as a moment date
   const date = moment(row["Date"]);
@@ -58,7 +54,7 @@ function converter(row) {
     type.toLowerCase() === "person and vehicle search";
 
   // Get age range field
-  const ageRange = row["Age Range"];
+  const ageRange = row["Age range"];
 
   // Set adult and child ranges
   const adultRanges = ["18-24", "25-34", "over 34"];
@@ -72,6 +68,10 @@ function converter(row) {
   const policingOp = row["Part of a policing operation"] || "";
   row["Part of a policing operation"] =
     policingOp.toLowerCase() === "true" ? "true" : "false";
+
+  const longitude = row["Longitude"];
+  const latitude = row["Latitude"];
+  row['Postcode'] = postcodes[`${longitude}:${latitude}`] || null;
   
   return row;
 }
@@ -134,10 +134,19 @@ fs.readFile(file, "utf8", function(e, input) {
             obj[header[index]] = cell;
           });
           return obj;
-        }).map(obj => {
+        })
+        .map(obj => {
+          const newObj = {};
+          Object.keys(obj).forEach(key => {
+            newObj[key] = obj[key]
+            .replace('\r', '')
+            .replace('\n', '');
+          });
+          return newObj;
+        })
+        .map(obj => {
           // Convert the object row
           const convertedObj = converter(obj) || obj;
-          const newRow = [];
           Object.keys(convertedObj).forEach(function(head) {
             // Add any new headers to the header array
             if (!header.includes(head)) {
@@ -149,11 +158,10 @@ fs.readFile(file, "utf8", function(e, input) {
             }
           });
 
-          // Push the new data in the order of the headers
-          header.forEach(function(head) {
-            newRow.push(String(convertedObj[head]));
+          // Return the new data in the order of the headers
+          return header.map(function(head) {
+            return convertedObj[head];
           });
-          return newRow;
         });
       })
     );
@@ -172,7 +180,7 @@ fs.readFile(file, "utf8", function(e, input) {
       outputData.map(function(row) {
         return _.join(row, ",");
       }),
-      "\r\n"
+      "\r"
     );
 
     // Write data to output file

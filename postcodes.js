@@ -38,7 +38,7 @@ function receivePostcode(long, lat, postcode) {
     postcodes[long + ":" + lat] = null;
     return;
   }
-  postcodes[long + ":" + lat] = postcode.result[0].outcode;
+  postcodes[long + ":" + lat] = postcode.result[0].postcode;
   if (callsCompleted % 1000 === 100) {
     fs.writeFileSync(outputFile, JSON.stringify(postcodes, null, 2));
   }
