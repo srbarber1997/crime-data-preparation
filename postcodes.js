@@ -36,9 +36,9 @@ function receivePostcode(long, lat, postcode) {
   // the longitude and latitude
   if (postcode.result === null) {
     postcodes[long + ":" + lat] = null;
-    return;
+  } else {
+    postcodes[long + ":" + lat] = postcode.result[0].postcode;
   }
-  postcodes[long + ":" + lat] = postcode.result[0].postcode;
   if (callsCompleted % 1000 === 100) {
     fs.writeFileSync(outputFile, JSON.stringify(postcodes, null, 2));
   }
@@ -101,10 +101,9 @@ fs.readFile(file, "utf8", function(e, input) {
 
   const fetchInterval = {};
   parser.on("end", function() {
-    process.stdout.write("Fetching Postcodes...\n");
     const header = output[0];
-    const body = output.slice(1).splice(0, 2000);
-    body.map(row => {
+    const body = output.slice(1).splice(0, 2000)
+    .map(row => {
         const obj = {};
         row.forEach(function(cell, index) {
           obj[header[index]] = cell;
@@ -113,17 +112,21 @@ fs.readFile(file, "utf8", function(e, input) {
       })
       .filter(row => row["Longitude"] && row["Latitude"])
       .filter(row => !Object.keys(postcodes).includes(`${row["Longitude"]}:${row["Latitude"]}`))
-      .forEach((row) => {
-        const longitude = row["Longitude"];
-        const latitude = row["Latitude"];
+      
+    process.stdout.write("Fetching " + body.length + " Postcodes...\n");
+    body.forEach(row => {
+      const longitude = row["Longitude"];
+      const latitude = row["Latitude"];
 
-        fetchInterval[longitude + ":" + latitude] = setInterval(() => {
-          if (calls < 50) {
+      fetchInterval[longitude + ":" + latitude] = setInterval(() => {
+        if (calls < 500) {
+          if (!Object.keys(postcodes).includes(`${longitude}:${latitude}`)) {
             requestPostcode(longitude, latitude);
-            clearInterval(fetchInterval[longitude + ":" + latitude]);
           }
-        }, 100);
-      });
+          clearInterval(fetchInterval[longitude + ":" + latitude]);
+        }
+      }, 100);
+    });
     const finishInteval = setInterval(() => {
       if (calls > 0) {
         return;

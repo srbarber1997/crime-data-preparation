@@ -72,7 +72,13 @@ function converter(row) {
   const longitude = row["Longitude"];
   const latitude = row["Latitude"];
   row['Postcode'] = postcodes[`${longitude}:${latitude}`] || null;
-  
+
+  const outcome = row['Outcome'];
+  const notFoundOutcomes = [
+    'Nothing found - no further action',
+    'A no further action disposal'
+  ];
+  row['Item found']= !notFoundOutcomes.includes(outcome);  
   return row;
 }
 
