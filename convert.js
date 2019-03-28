@@ -71,7 +71,11 @@ function converter(row) {
 
   const longitude = row["Longitude"];
   const latitude = row["Latitude"];
-  row['Postcode'] = postcodes[`${longitude}:${latitude}`] || null;
+  if (postcodes[`${longitude}:${latitude}`]) {
+    row['Postcode'] = postcodes[`${longitude}:${latitude}`].postcode || null;
+    row['Outcode'] = postcodes[`${longitude}:${latitude}`].outcode || null;
+    row['Incode'] = postcodes[`${longitude}:${latitude}`].incode || null;
+  }
 
   const outcome = row['Outcome'];
   const notFoundOutcomes = [
@@ -166,7 +170,7 @@ fs.readFile(file, "utf8", function(e, input) {
 
           // Return the new data in the order of the headers
           return header.map(function(head) {
-            return convertedObj[head];
+            return convertedObj[head] || null;
           });
         });
       })
@@ -197,7 +201,7 @@ fs.readFile(file, "utf8", function(e, input) {
       } else {
         process.stdout.write("Output writen to: " + outputFile);
         process.stdout.write(
-          "Completed in " + (moment().valueOf() - startTime) + "ms"
+          "\nCompleted in " + (moment().valueOf() - startTime) + "ms"
         );
       }
     });
