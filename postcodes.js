@@ -134,6 +134,7 @@ fs.readFile(file, "utf8", function(e, input) {
 
       process.stdout.write('\n');
       process.stdout.write(`Completed with ${errors.length} errors${errors.length === 0 ? ':' : ''}`);
+      process.stdout.write('\n');
       errors.forEach(error => process.stdout.write(`\n - ${error}`));
       
       process.stdout.write("\nWriting to: " + outputFile + "\n");

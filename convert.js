@@ -31,16 +31,16 @@ function converter(row) {
 
   // Create new columns for date based data
   row["Day of Week"] = date.day();
-  row["Is Weekend"] = date.day() === 0 || date.day() === 6;
-  row["Is Weekday"] = date.day() !== 0 && date.day() !== 6;
+  row["Is Weekend"] = date.day() === 0 || date.day() === 6 ? 1 : 0;
+  row["Is Weekday"] = date.day() !== 0 && date.day() !== 6 ? 1 : 0;
   row["Hour"] = date.hour();
 
   // Get the gender field
   const gender = row["Gender"];
 
   // Create new columns based of the gender field
-  row["Is Male"] = gender.toLowerCase() === "male";
-  row["Is Female"] = gender.toLowerCase() === "female";
+  row["Is Male"] = gender.toLowerCase() === "male" ? 1 : 0;
+  row["Is Female"] = gender.toLowerCase() === "female" ? 1 : 0;
 
   // Get Type of search field
   const type = row["Type"];
@@ -48,10 +48,10 @@ function converter(row) {
   // Create fields for both types of search
   row["Is Person Search"] =
     type.toLowerCase() === "person search" ||
-    type.toLowerCase() === "person and vehicle search";
+    type.toLowerCase() === "person and vehicle search"  ? 1 : 0;
   row["Is Vehicle Search"] =
     type.toLowerCase() === "vehicle search" ||
-    type.toLowerCase() === "person and vehicle search";
+    type.toLowerCase() === "person and vehicle search" ? 1 : 0;
 
   // Get age range field
   const ageRange = row["Age range"];
@@ -61,13 +61,13 @@ function converter(row) {
   const childRanges = ["10-17", "under 10"];
 
   // Create fields for adult and child searches 
-  row["Is adult"] = adultRanges.includes(ageRange);
-  row["Is child"] = childRanges.includes(ageRange);
+  row["Is adult"] = adultRanges.includes(ageRange) ? 1 : 0;
+  row["Is child"] = childRanges.includes(ageRange) ? 1 : 0;
 
   // Fill in missing data with false
   const policingOp = row["Part of a policing operation"] || "";
   row["Part of a policing operation"] =
-    policingOp.toLowerCase() === "true" ? "true" : "false";
+    policingOp.toLowerCase() === "true" ? 1 : 0;
 
   const longitude = row["Longitude"];
   const latitude = row["Latitude"];
@@ -82,7 +82,7 @@ function converter(row) {
     'Nothing found - no further action',
     'A no further action disposal'
   ];
-  row['Item found']= !notFoundOutcomes.includes(outcome);  
+  row['Item found']= !notFoundOutcomes.includes(outcome) ? 1 : 0;  
   return row;
 }
 
