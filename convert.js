@@ -82,7 +82,7 @@ function converter(row) {
     'Nothing found - no further action',
     'A no further action disposal'
   ];
-  row['Item found']= !notFoundOutcomes.includes(outcome) ? 1 : 0;  
+  row['Item found']= !notFoundOutcomes.includes(outcome);
   return row;
 }
 
